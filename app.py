@@ -76,11 +76,16 @@ def criar_dados_simulados(n=900, seed=42):
         linhas.append({**linha, "resultado": classe})
     return pd.DataFrame(linhas)
 
-dados = criar_dados_simulados()
+dados = criar_dados_simulados(n=3000)
 X = pd.get_dummies(dados[colunas])
 y = dados["resultado"]
+# A estratificação só funciona se cada classe tiver pelo menos 2 exemplos.
+# Com dados simulados, uma classe pode aparecer muito poucas vezes.
+contagens_classes = y.value_counts()
+estratificar = y if len(contagens_classes) > 1 and contagens_classes.min() >= 2 else None
+
 X_treino, X_teste, y_treino, y_teste = train_test_split(
-    X, y, test_size=0.25, random_state=42, stratify=y
+    X, y, test_size=0.25, random_state=42, stratify=estratificar
 )
 modelo = DecisionTreeClassifier(max_depth=5, random_state=42, class_weight="balanced")
 modelo.fit(X_treino, y_treino)
