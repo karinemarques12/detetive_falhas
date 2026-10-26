@@ -53,3 +53,7 @@ Instale Python 3.10 ou superior. Durante a instalação do Python no Windows, ma
 O conjunto de treinamento é gerado no próprio código para permitir executar o projeto sem depender de dados externos. Os rótulos foram criados por regras didáticas; portanto, a acurácia mostrada só descreve o desempenho nesse conjunto simulado. Ela não prova capacidade de prever falhas reais.
 
 Para um projeto real, reúna dados históricos confiáveis, obtenha rótulos validados por especialistas, remova dados pessoais ou confidenciais e teste o modelo em registros separados do treinamento. Não use esta demonstração para decidir se um equipamento real pode continuar operando.
+
+
+### Árvore de decisão em português
+Depois de preencher a ficha e clicar em **Analisar equipamento**, o aplicativo exibe uma versão resumida da árvore usada pelo modelo. Os nomes das variáveis são apresentados em português e o gráfico mostra apenas os primeiros níveis para facilitar a leitura. O modelo continua sendo treinado com dados simulados para fins acadêmicos.

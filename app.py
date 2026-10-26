@@ -91,6 +91,27 @@ modelo = DecisionTreeClassifier(max_depth=5, random_state=42, class_weight="bala
 modelo.fit(X_treino, y_treino)
 acuracia = accuracy_score(y_teste, modelo.predict(X_teste))
 
+# Traduz os nomes criados pelo get_dummies para rótulos fáceis de entender no gráfico.
+nomes_campos = {
+    "temperatura": "Temperatura",
+    "vibracao": "Vibração",
+    "ruido": "Ruídos incomuns",
+    "oleo": "Condição do óleo",
+    "vazamento": "Vazamentos",
+    "horas": "Horas de operação por dia",
+    "falhas": "Histórico de falhas",
+    "manutencao": "Manutenção preventiva",
+    "consumo": "Consumo de combustível/energia",
+    "producao": "Desempenho da produção",
+    "paradas": "Paradas inesperadas",
+    "alertas": "Alertas no painel",
+}
+nomes_colunas_arvore = []
+for coluna in X.columns:
+    campo, valor = coluna.split("_", 1)
+    nome_legivel = nomes_campos.get(campo, campo.capitalize())
+    nomes_colunas_arvore.append(f"{nome_legivel}: {valor}")
+
 st.sidebar.header("Sobre o modelo")
 st.sidebar.metric("Acurácia nos dados simulados", f"{acuracia:.1%}")
 st.sidebar.write("Profundidade máxima da árvore:", modelo.get_depth())
@@ -169,6 +190,27 @@ if enviado:
     else:
         st.success("Mantenha as inspeções preventivas e acompanhe os indicadores. Risco baixo não significa ausência de falhas.")
 
+    st.subheader("3. Árvore de Decisão desta análise")
+    st.write(
+        "A árvore abaixo mostra, de forma resumida, algumas das perguntas que o modelo "
+        "utiliza para chegar à classificação. Os nomes e resultados estão em português."
+    )
+    fig, ax = plt.subplots(figsize=(15, 6))
+    plot_tree(
+        modelo,
+        feature_names=nomes_colunas_arvore,
+        class_names=list(modelo.classes_),
+        filled=True,
+        rounded=True,
+        max_depth=2,
+        fontsize=8,
+        ax=ax
+    )
+    fig.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+    st.caption("Para facilitar a leitura, o gráfico exibe apenas os primeiros níveis da árvore treinada.")
+
     # Guarda a análise para permitir baixar um registro.
     registro = {"tipo_equipamento": tipo, **respostas, "classificacao_modelo": previsao,
                 "confianca_estimada_simulada": round(prob, 4)}
@@ -178,17 +220,6 @@ if enviado:
         file_name="resultado_diagnostico.csv",
         mime="text/csv"
     )
-
-st.divider()
-st.subheader("3. Visualize a Árvore de Decisão")
-st.write("O gráfico mostra exemplos das perguntas que o modelo aprendeu a usar nos dados simulados.")
-fig, ax = plt.subplots(figsize=(20, 9))
-plot_tree(
-    modelo, feature_names=list(X.columns), class_names=list(modelo.classes_),
-    filled=True, rounded=True, max_depth=3, fontsize=7, ax=ax
-)
-st.pyplot(fig)
-plt.close(fig)
 
 st.subheader("4. Dados demonstrativos")
 st.write("A tabela abaixo mostra algumas linhas do conjunto simulado usado para treinar o modelo.")
