@@ -1,238 +1,174 @@
 import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier, plot_tree
-from sklearn.metrics import accuracy_score
+import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
 st.set_page_config(page_title="Detetive de Falhas na Mineração", page_icon="⛏️", layout="wide")
-
 st.title("⛏️ Detetive de Falhas na Mineração")
-st.write(
-    "Sistema acadêmico demonstrativo que usa uma Árvore de Decisão para classificar "
-    "o nível de atenção recomendado para um equipamento."
-)
-st.warning(
-    "Demonstração educativa: os dados e os resultados não substituem inspeção técnica, "
-    "manuais do fabricante ou procedimentos de segurança. O modelo inicial é treinado "
-    "com dados simulados, não com falhas reais."
-)
+st.write("Preencha as condições do equipamento para estimar o nível de risco e visualizar como a árvore de decisão chegou à classificação.")
+st.info("Demonstração educacional com dados simulados. Não substitui inspeção técnica, sensores calibrados ou procedimentos de segurança da mina.")
 
-# Valores categóricos usados para transformar as respostas em números.
-opcoes = {
-    "temperatura": ["Normal", "Acima do normal", "Muito alta"],
-    "vibracao": ["Normal", "Um pouco elevada", "Muito elevada"],
-    "ruido": ["Não", "Sim, leves", "Sim, fortes"],
-    "oleo": ["Normal", "Abaixo do recomendado", "Contaminado ou com aspecto incomum", "Não verificado"],
-    "vazamento": ["Não", "Sim, pequenos", "Sim, significativos"],
-    "horas": ["Até 4 horas", "4 a 8 horas", "8 a 12 horas", "Mais de 12 horas"],
-    "falhas": ["Nenhuma", "Uma falha recente", "Duas ou mais falhas"],
-    "manutencao": ["Em dia", "Próxima do vencimento", "Atrasada", "Não sei"],
-    "consumo": ["Normal", "Acima do habitual", "Muito acima do habitual", "Não disponível"],
-    "producao": ["Normal", "Abaixo do esperado", "Muito abaixo do esperado", "Não se aplica"],
-    "paradas": ["Nenhuma", "Uma parada", "Duas ou mais paradas"],
-    "alertas": ["Nenhum", "Alerta leve", "Alerta crítico", "Não verificado"],
-}
-
-colunas = list(opcoes.keys())
-rotulos = ["Risco baixo", "Atenção", "Risco elevado"]
-
-# Criamos dados sintéticos para demonstrar o treinamento.
-# A função abaixo simula exemplos para fins didáticos; não representa uma regra técnica real.
-def criar_dados_simulados(n=900, seed=42):
-    import numpy as np
+# Os dados abaixo são sintéticos e servem apenas para demonstrar o funcionamento do ML.
+def criar_dados_simulados(n=3000, seed=42):
     rng = np.random.default_rng(seed)
-    linhas = []
-    for _ in range(n):
-        linha = {c: rng.choice(vals) for c, vals in opcoes.items()}
-        pontos = 0
-        pontos += {"Normal": 0, "Acima do normal": 1, "Muito alta": 3}[linha["temperatura"]]
-        pontos += {"Normal": 0, "Um pouco elevada": 1, "Muito elevada": 2}[linha["vibracao"]]
-        pontos += {"Não": 0, "Sim, leves": 1, "Sim, fortes": 2}[linha["ruido"]]
-        pontos += {"Normal": 0, "Abaixo do recomendado": 2,
-                   "Contaminado ou com aspecto incomum": 3, "Não verificado": 1}[linha["oleo"]]
-        pontos += {"Não": 0, "Sim, pequenos": 1, "Sim, significativos": 3}[linha["vazamento"]]
-        pontos += {"Até 4 horas": 0, "4 a 8 horas": 0, "8 a 12 horas": 1, "Mais de 12 horas": 2}[linha["horas"]]
-        pontos += {"Nenhuma": 0, "Uma falha recente": 1, "Duas ou mais falhas": 2}[linha["falhas"]]
-        pontos += {"Em dia": 0, "Próxima do vencimento": 1, "Atrasada": 2, "Não sei": 1}[linha["manutencao"]]
-        pontos += {"Normal": 0, "Acima do habitual": 1, "Muito acima do habitual": 2, "Não disponível": 0}[linha["consumo"]]
-        pontos += {"Normal": 0, "Abaixo do esperado": 1, "Muito abaixo do esperado": 2, "Não se aplica": 0}[linha["producao"]]
-        pontos += {"Nenhuma": 0, "Uma parada": 1, "Duas ou mais paradas": 2}[linha["paradas"]]
-        pontos += {"Nenhum": 0, "Alerta leve": 1, "Alerta crítico": 4, "Não verificado": 1}[linha["alertas"]]
-        # Ruído aleatório pequeno para evitar uma correspondência perfeitamente determinística.
-        pontos += int(rng.choice([0, 0, 0, 1]))
-        if (linha["temperatura"] == "Muito alta" or
-            linha["vibracao"] == "Muito elevada" or
-            linha["oleo"] == "Contaminado ou com aspecto incomum" or
-            linha["vazamento"] == "Sim, significativos" or
-            linha["alertas"] == "Alerta crítico"):
-            classe = "Risco elevado"
-        elif pontos >= 9:
-            classe = "Risco elevado"
-        elif pontos >= 4:
-            classe = "Atenção"
-        else:
-            classe = "Risco baixo"
-        linhas.append({**linha, "resultado": classe})
-    return pd.DataFrame(linhas)
+    tipos = ["Caminhão fora de estrada", "Escavadeira", "Britador", "Correia transportadora", "Perfuratriz"]
+    categorias = {
+        "temperatura": ["Normal", "Acima do normal", "Muito alta"],
+        "vibracao": ["Normal", "Moderada", "Alta"],
+        "ruido": ["Normal", "Incomum", "Muito alto"],
+        "oleo": ["Bom", "Atenção", "Degradado"],
+        "vazamento": ["Não", "Pequeno", "Grande"],
+        "falhas": ["Nenhuma", "Uma falha recente", "Falhas recorrentes"],
+        "manutencao": ["Em dia", "Atrasada", "Muito atrasada"],
+        "consumo": ["Normal", "Acima do normal", "Muito alto"],
+        "producao": ["Normal", "Reduzida", "Muito reduzida"],
+        "paradas": ["Não", "Ocasional", "Frequentes"],
+        "alertas": ["Nenhum", "Alguns alertas", "Alertas críticos"],
+    }
+    pesos = {
+        "temperatura": [0.55, 0.30, 0.15], "vibracao": [0.55, 0.30, 0.15],
+        "ruido": [0.60, 0.27, 0.13], "oleo": [0.55, 0.27, 0.18],
+        "vazamento": [0.70, 0.20, 0.10], "falhas": [0.60, 0.25, 0.15],
+        "manutencao": [0.60, 0.25, 0.15], "consumo": [0.60, 0.27, 0.13],
+        "producao": [0.60, 0.27, 0.13], "paradas": [0.65, 0.23, 0.12],
+        "alertas": [0.65, 0.23, 0.12],
+    }
+    dados = pd.DataFrame({"equipamento": rng.choice(tipos, n)})
+    for coluna, opcoes in categorias.items():
+        dados[coluna] = [rng.choice(opcoes, p=pesos[coluna]) for _ in range(n)]
+    dados["horas"] = rng.integers(1, 25, n)
 
-dados = criar_dados_simulados(n=3000)
-X = pd.get_dummies(dados[colunas])
-y = dados["resultado"]
-# A estratificação só funciona se cada classe tiver pelo menos 2 exemplos.
-# Com dados simulados, uma classe pode aparecer muito poucas vezes.
-contagens_classes = y.value_counts()
-estratificar = y if len(contagens_classes) > 1 and contagens_classes.min() >= 2 else None
+    pontos = np.zeros(n)
+    pontos += dados["temperatura"].map({"Normal": 0, "Acima do normal": 1, "Muito alta": 2}).to_numpy()
+    pontos += dados["vibracao"].map({"Normal": 0, "Moderada": 1, "Alta": 2}).to_numpy()
+    pontos += dados["ruido"].map({"Normal": 0, "Incomum": 1, "Muito alto": 2}).to_numpy()
+    pontos += dados["oleo"].map({"Bom": 0, "Atenção": 1, "Degradado": 2}).to_numpy()
+    pontos += dados["vazamento"].map({"Não": 0, "Pequeno": 1, "Grande": 2}).to_numpy()
+    pontos += dados["falhas"].map({"Nenhuma": 0, "Uma falha recente": 1, "Falhas recorrentes": 2}).to_numpy() * 1.2
+    pontos += dados["manutencao"].map({"Em dia": 0, "Atrasada": 1, "Muito atrasada": 2}).to_numpy()
+    pontos += dados["consumo"].map({"Normal": 0, "Acima do normal": 1, "Muito alto": 2}).to_numpy()
+    pontos += dados["producao"].map({"Normal": 0, "Reduzida": 1, "Muito reduzida": 2}).to_numpy()
+    pontos += dados["paradas"].map({"Não": 0, "Ocasional": 1, "Frequentes": 2}).to_numpy()
+    pontos += dados["alertas"].map({"Nenhum": 0, "Alguns alertas": 1, "Alertas críticos": 2}).to_numpy() * 1.2
+    pontos += np.where(dados["horas"].to_numpy() >= 20, 2, np.where(dados["horas"].to_numpy() >= 12, 1, 0))
+    dados["resultado"] = np.where(pontos >= 13, "Risco elevado", np.where(pontos >= 7, "Atenção", "Risco baixo"))
+    return dados
 
-X_treino, X_teste, y_treino, y_teste = train_test_split(
-    X, y, test_size=0.25, random_state=42, stratify=estratificar
-)
-modelo = DecisionTreeClassifier(max_depth=5, random_state=42, class_weight="balanced")
+DADOS = criar_dados_simulados()
+FEATURES = ["equipamento", "temperatura", "vibracao", "ruido", "oleo", "vazamento", "horas", "falhas", "manutencao", "consumo", "producao", "paradas", "alertas"]
+X = pd.get_dummies(DADOS[FEATURES])
+y = DADOS["resultado"]
+# Evita erro de stratify caso alguma classe tenha poucos exemplos em alterações futuras.
+contagens = y.value_counts()
+estratificar = y if len(contagens) > 1 and contagens.min() >= 2 else None
+X_treino, X_teste, y_treino, y_teste = train_test_split(X, y, test_size=0.25, random_state=42, stratify=estratificar)
+modelo = DecisionTreeClassifier(max_depth=5, min_samples_leaf=12, class_weight="balanced", random_state=42)
 modelo.fit(X_treino, y_treino)
-acuracia = accuracy_score(y_teste, modelo.predict(X_teste))
 
-# Traduz os nomes criados pelo get_dummies para rótulos fáceis de entender no gráfico.
-nomes_campos = {
-    "temperatura": "Temperatura",
-    "vibracao": "Vibração",
-    "ruido": "Ruídos incomuns",
-    "oleo": "Condição do óleo",
-    "vazamento": "Vazamentos",
-    "horas": "Horas de operação por dia",
-    "falhas": "Histórico de falhas",
-    "manutencao": "Manutenção preventiva",
-    "consumo": "Consumo de combustível/energia",
-    "producao": "Desempenho da produção",
-    "paradas": "Paradas inesperadas",
-    "alertas": "Alertas no painel",
+# Tradução dos nomes das variáveis codificadas para a árvore.
+NOMES_PT = {
+    "equipamento": "Tipo de equipamento", "temperatura": "Temperatura", "vibracao": "Vibração",
+    "ruido": "Ruídos incomuns", "oleo": "Condição do óleo", "vazamento": "Vazamentos",
+    "horas": "Horas de operação por dia", "falhas": "Histórico de falhas",
+    "manutencao": "Manutenção preventiva", "consumo": "Consumo de combustível/energia",
+    "producao": "Desempenho da produção", "paradas": "Paradas inesperadas", "alertas": "Alertas no painel",
 }
-nomes_colunas_arvore = []
-for coluna in X.columns:
-    campo, valor = coluna.split("_", 1)
-    nome_legivel = nomes_campos.get(campo, campo.capitalize())
-    nomes_colunas_arvore.append(f"{nome_legivel}: {valor}")
+def nome_coluna_pt(nome):
+    if nome == "horas":
+        return NOMES_PT["horas"]
+    for prefixo, traducao in NOMES_PT.items():
+        if nome.startswith(prefixo + "_"):
+            return traducao + " — " + nome[len(prefixo) + 1:]
+    return nome
 
-st.sidebar.header("Sobre o modelo")
-st.sidebar.metric("Acurácia nos dados simulados", f"{acuracia:.1%}")
-st.sidebar.write("Profundidade máxima da árvore:", modelo.get_depth())
-st.sidebar.caption("Essa métrica mede o desempenho em exemplos simulados. Não representa a precisão em equipamentos reais.")
+with st.sidebar:
+    st.header("Condição do equipamento")
+    equipamento = st.selectbox("Tipo de equipamento", ["Caminhão fora de estrada", "Escavadeira", "Britador", "Correia transportadora", "Perfuratriz"])
+    temperatura = st.selectbox("Temperatura", ["Normal", "Acima do normal", "Muito alta"])
+    vibracao = st.selectbox("Vibração", ["Normal", "Moderada", "Alta"])
+    ruido = st.selectbox("Ruídos incomuns", ["Normal", "Incomum", "Muito alto"])
+    oleo = st.selectbox("Condição do óleo", ["Bom", "Atenção", "Degradado"])
+    vazamento = st.selectbox("Vazamentos", ["Não", "Pequeno", "Grande"])
+    horas = st.slider("Horas de operação por dia", 1, 24, 12)
+    falhas = st.selectbox("Histórico de falhas", ["Nenhuma", "Uma falha recente", "Falhas recorrentes"])
+    manutencao = st.selectbox("Manutenção preventiva", ["Em dia", "Atrasada", "Muito atrasada"])
+    consumo = st.selectbox("Consumo de combustível/energia", ["Normal", "Acima do normal", "Muito alto"])
+    producao = st.selectbox("Desempenho da produção", ["Normal", "Reduzida", "Muito reduzida"])
+    paradas = st.selectbox("Paradas inesperadas", ["Não", "Ocasional", "Frequentes"])
+    alertas = st.selectbox("Alertas no painel", ["Nenhum", "Alguns alertas", "Alertas críticos"])
 
-st.subheader("1. Preencha a ficha do equipamento")
-with st.form("formulario_diagnostico"):
-    tipo = st.selectbox("Tipo de equipamento", [
-        "Caminhão fora de estrada", "Escavadeira", "Pá carregadeira",
-        "Trator de esteira", "Perfuratriz"
-    ])
-    c1, c2 = st.columns(2)
-    respostas = {}
-    for i, campo in enumerate(colunas):
-        destino = c1 if i % 2 == 0 else c2
-        with destino:
-            nomes = {
-                "temperatura": "Temperatura do equipamento",
-                "vibracao": "Nível de vibração",
-                "ruido": "Ruídos incomuns",
-                "oleo": "Nível/condição do óleo",
-                "vazamento": "Vazamentos visíveis",
-                "horas": "Horas de operação por dia",
-                "falhas": "Histórico recente de falhas",
-                "manutencao": "Manutenção preventiva",
-                "consumo": "Consumo de combustível/energia",
-                "producao": "Desempenho da produção",
-                "paradas": "Paradas inesperadas recentes",
-                "alertas": "Alertas no painel",
-            }
-            respostas[campo] = st.selectbox(nomes[campo], opcoes[campo], key=f"campo_{campo}")
-    enviado = st.form_submit_button("Analisar equipamento", type="primary")
+respostas = {
+    "equipamento": equipamento, "temperatura": temperatura, "vibracao": vibracao, "ruido": ruido,
+    "oleo": oleo, "vazamento": vazamento, "horas": horas, "falhas": falhas,
+    "manutencao": manutencao, "consumo": consumo, "producao": producao, "paradas": paradas, "alertas": alertas,
+}
+entrada_bruta = pd.DataFrame([respostas])[FEATURES]
+entrada = pd.get_dummies(entrada_bruta).reindex(columns=X.columns, fill_value=0)
+predicao = modelo.predict(entrada)[0]
+probabilidades = modelo.predict_proba(entrada)[0]
+confianca = float(probabilidades.max())
 
-if enviado:
-    nova_linha = pd.DataFrame([respostas])
-    entrada = pd.get_dummies(nova_linha)
-    entrada = entrada.reindex(columns=X.columns, fill_value=0)
-    previsao = modelo.predict(entrada)[0]
-    probabilidades = modelo.predict_proba(entrada)[0]
-    classes_modelo = list(modelo.classes_)
-    prob = float(probabilidades[classes_modelo.index(previsao)])
+st.subheader("Resultado da avaliação")
+col1, col2, col3 = st.columns(3)
+col1.metric("Classificação estimada", predicao)
+col2.metric("Confiança do modelo", f"{confianca:.0%}")
+col3.metric("Acurácia de teste (dados simulados)", f"{accuracy_score(y_teste, modelo.predict(X_teste)):.0%}")
 
-    st.subheader("2. Resultado da análise")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.metric("Classificação prevista", previsao)
-    with col_b:
-        st.metric("Confiança estimada pelo modelo", f"{prob:.1%}")
-    st.caption("A confiança é a probabilidade estimada pelo modelo treinado em dados simulados; não é garantia de diagnóstico correto.")
+if predicao == "Risco elevado":
+    st.error("Risco elevado: interrompa a avaliação operacional conforme os procedimentos locais e solicite inspeção da equipe responsável antes de continuar a operação.")
+    recomendacoes = ["Solicitar inspeção técnica prioritária.", "Verificar alertas, vazamentos, temperatura e vibração.", "Consultar o histórico de falhas e os procedimentos de bloqueio/etiquetagem aplicáveis."]
+elif predicao == "Atenção":
+    st.warning("Atenção: planeje uma verificação técnica e acompanhe as condições do equipamento.")
+    recomendacoes = ["Programar inspeção preventiva em prazo adequado.", "Monitorar os sinais que estão fora do padrão.", "Confirmar se a manutenção está em dia e registrar as observações."]
+else:
+    st.success("Risco baixo segundo o modelo demonstrativo. Continue seguindo as rotinas de inspeção e manutenção.")
+    recomendacoes = ["Manter a manutenção preventiva programada.", "Continuar monitorando sensores e alertas.", "Registrar os dados para acompanhar tendências ao longo do tempo."]
+st.markdown("**Recomendações**")
+for item in recomendacoes:
+    st.write(f"- {item}")
 
-    fatores = []
-    if respostas["temperatura"] != "Normal": fatores.append(f"Temperatura: {respostas['temperatura']}")
-    if respostas["vibracao"] != "Normal": fatores.append(f"Vibração: {respostas['vibracao']}")
-    if respostas["ruido"] != "Não": fatores.append(f"Ruídos: {respostas['ruido']}")
-    if respostas["oleo"] != "Normal": fatores.append(f"Óleo: {respostas['oleo']}")
-    if respostas["vazamento"] != "Não": fatores.append(f"Vazamento: {respostas['vazamento']}")
-    if respostas["falhas"] != "Nenhuma": fatores.append(f"Histórico de falhas: {respostas['falhas']}")
-    if respostas["manutencao"] == "Atrasada": fatores.append("Manutenção preventiva atrasada")
-    if respostas["consumo"] in ["Acima do habitual", "Muito acima do habitual"]: fatores.append(f"Consumo: {respostas['consumo']}")
-    if respostas["producao"] in ["Abaixo do esperado", "Muito abaixo do esperado"]: fatores.append(f"Produção: {respostas['producao']}")
-    if respostas["paradas"] != "Nenhuma": fatores.append(f"Paradas: {respostas['paradas']}")
-    if respostas["alertas"] != "Nenhum": fatores.append(f"Alertas: {respostas['alertas']}")
-
-    st.markdown("**Fatores de atenção informados**")
-    if fatores:
-        for fator in fatores:
-            st.write("•", fator)
+st.subheader("Por que o modelo chegou a esse resultado?")
+st.caption("O caminho abaixo mostra as decisões da árvore para as respostas atuais. Em seguida, a árvore completa é exibida com os nomes em português.")
+# decision_path retorna os nós atravessados pela amostra atual.
+no_indicador = modelo.decision_path(entrada)
+os_nos = no_indicador.indices
+arvore = modelo.tree_
+passos = []
+for no in os_nos:
+    if arvore.feature[no] < 0:
+        continue
+    indice_feature = arvore.feature[no]
+    nome_original = X.columns[indice_feature]
+    valor = float(entrada.iloc[0, indice_feature])
+    limite = float(arvore.threshold[no])
+    decisao = "sim" if valor <= limite else "não"
+    nome_legivel = nome_coluna_pt(nome_original)
+    if nome_original in entrada.columns and "_" in nome_original:
+        valor_legivel = "presente" if valor == 1 else "ausente"
     else:
-        st.write("Nenhum sinal de alerta foi informado na ficha.")
+        valor_legivel = str(valor)
+    passos.append(f"**{len(passos)+1}. {nome_legivel}**: valor codificado `{valor_legivel}`; condição `{valor:.0f} ≤ {limite:.2f}`? **{decisao.upper()}**")
+if passos:
+    for passo in passos:
+        st.markdown(passo)
+else:
+    st.write("A árvore classificou a entrada diretamente em uma folha, sem decisões intermediárias.")
 
-    st.markdown("**Próximas ações sugeridas**")
-    if previsao == "Risco elevado":
-        st.error("Priorize a segurança. Siga os procedimentos da empresa e solicite avaliação da equipe de manutenção antes de continuar a operação quando houver condição insegura.")
-    elif previsao == "Atenção":
-        st.warning("Consulte o histórico do equipamento e programe uma inspeção técnica conforme os procedimentos da empresa.")
-    else:
-        st.success("Mantenha as inspeções preventivas e acompanhe os indicadores. Risco baixo não significa ausência de falhas.")
-
-    st.subheader("3. Árvore de Decisão desta análise")
-    st.write(
-        "A árvore abaixo mostra, de forma resumida, algumas das perguntas que o modelo "
-        "utiliza para chegar à classificação. Os nomes e resultados estão em português."
-    )
-    fig, ax = plt.subplots(figsize=(15, 6))
+with st.expander("Ver árvore de decisão completa em português", expanded=True):
+    fig, ax = plt.subplots(figsize=(32, 20))
     plot_tree(
         modelo,
-        feature_names=nomes_colunas_arvore,
-        class_names=list(modelo.classes_),
-        filled=True,
-        rounded=True,
-        max_depth=2,
-        fontsize=8,
-        ax=ax
+        feature_names=[nome_coluna_pt(c) for c in X.columns],
+        class_names=[str(c) for c in modelo.classes_],
+        filled=True, rounded=True, max_depth=None, fontsize=7, ax=ax,
     )
-    fig.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
-    st.caption("Para facilitar a leitura, o gráfico exibe apenas os primeiros níveis da árvore treinada.")
+    ax.set_title("Árvore de decisão — variáveis e classes em português")
+    st.pyplot(fig, use_container_width=True)
+    st.caption("Esta visualização exibe todos os níveis da árvore treinada. Se estiver muito grande, amplie a imagem ou use o zoom do navegador; o caminho individual acima destaca as decisões tomadas para as respostas atuais.")
 
-    # Guarda a análise para permitir baixar um registro.
-    registro = {"tipo_equipamento": tipo, **respostas, "classificacao_modelo": previsao,
-                "confianca_estimada_simulada": round(prob, 4)}
-    st.download_button(
-        "Baixar resultado em CSV",
-        data=pd.DataFrame([registro]).to_csv(index=False).encode("utf-8-sig"),
-        file_name="resultado_diagnostico.csv",
-        mime="text/csv"
-    )
-
-st.subheader("4. Dados demonstrativos")
-st.write("A tabela abaixo mostra algumas linhas do conjunto simulado usado para treinar o modelo.")
-st.dataframe(dados.head(10), use_container_width=True)
-st.download_button(
-    "Baixar conjunto de dados simulado",
-    data=dados.to_csv(index=False).encode("utf-8-sig"),
-    file_name="dados_simulados_equipamentos.csv",
-    mime="text/csv"
-)
-
-st.info(
-    "Para transformar este protótipo em uma solução confiável, substitua os dados simulados por "
-    "registros reais e revisados por profissionais de manutenção, defina rótulos consistentes e "
-    "avalie o modelo em dados que não participaram do treinamento."
-)
+with st.expander("Ver dados usados nesta demonstração"):
+    st.write("Os dados foram gerados artificialmente para fins didáticos, usando regras simuladas. Não representam medições reais de uma mina.")
+    st.dataframe(DADOS.head(20), use_container_width=True)
